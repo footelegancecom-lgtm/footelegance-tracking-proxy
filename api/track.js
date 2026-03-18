@@ -169,6 +169,12 @@ function translateStatus(status, lang) {
       en: "Domestic customs clearance completed"
     },
     {
+      match: /Domestic customs clearance in progress/i,
+      it: "Sdoganamento nazionale in corso",
+      fr: "Dédouanement national en cours",
+      en: "Domestic customs clearance in progress"
+    },
+    {
       match: /Package has been packed and delivered to airport/i,
       it: "Il pacco è stato preparato e consegnato all’aeroporto",
       fr: "Le colis a été préparé et remis à l’aéroport",
@@ -179,6 +185,66 @@ function translateStatus(status, lang) {
       it: "Informazioni ordine ricevute. Stiamo aspettando il pacco.",
       fr: "Informations de commande reçues. Nous attendons l’arrivée du colis.",
       en: "Order information received. We're expecting your parcel to arrive with us."
+    },
+    {
+      match: /Awaiting flight assignment/i,
+      it: "In attesa dell’assegnazione del volo",
+      fr: "En attente d’attribution du vol",
+      en: "Awaiting flight assignment"
+    },
+    {
+      match: /The flight has taken off/i,
+      it: "Il volo è decollato",
+      fr: "Le vol a décollé",
+      en: "The flight has taken off"
+    },
+    {
+      match: /The flight has departed/i,
+      it: "Il volo è partito",
+      fr: "Le vol a décollé",
+      en: "The flight has departed"
+    },
+    {
+      match: /Flight ETA/i,
+      it: "Arrivo stimato del volo",
+      fr: "Arrivée estimée du vol",
+      en: "Flight estimated arrival"
+    },
+    {
+      match: /Flight ETD/i,
+      it: "Partenza stimata del volo",
+      fr: "Départ estimé du vol",
+      en: "Flight estimated departure"
+    },
+    {
+      match: /Estimated arrival date is/i,
+      it: "La data di arrivo stimata è",
+      fr: "La date d’arrivée estimée est",
+      en: "Estimated arrival date is"
+    },
+    {
+      match: /Estimated departure is/i,
+      it: "La partenza stimata è",
+      fr: "Le départ estimé est",
+      en: "Estimated departure is"
+    },
+    {
+      match: /Arrived at Destinated Airport/i,
+      it: "Arrivato all’aeroporto di destinazione",
+      fr: "Arrivé à l’aéroport de destination",
+      en: "Arrived at destination airport"
+    },
+    {
+      match: /Arrival to the destination airport/i,
+      it: "Arrivato all’aeroporto di destinazione",
+      fr: "Arrivé à l’aéroport de destination",
+      en: "Arrival to the destination airport"
+    },
+    {
+      match: /Arrived at customs clearance warehouse/i,
+      it: "Arrivato al magazzino di sdoganamento",
+      fr: "Arrivé à l’entrepôt de dédouanement",
+      en: "Arrived at customs clearance warehouse"
     },
     {
       match: /货物离开操作中心/,
@@ -208,11 +274,18 @@ function translateStatus(status, lang) {
 
   for (const item of translations) {
     if (item.match.test(s)) {
+      if (item.match.source === "Estimated arrival date is") {
+        return s.replace(/Estimated arrival date is/i, item[lang] || item.it);
+      }
+      if (item.match.source === "Estimated departure is") {
+        return s.replace(/Estimated departure is/i, item[lang] || item.it);
+      }
       return item[lang] || item.it;
     }
   }
 
   return s;
+}
 }
 
 function translate(key, lang) {
