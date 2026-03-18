@@ -152,6 +152,36 @@ function translateLocation(location) {
   return map[location] || location || "";
 }
 
+function replaceMonthNames(text, lang) {
+  if (!text) return text;
+
+  const months = {
+    january: { it: "gennaio", fr: "janvier", en: "January" },
+    february: { it: "febbraio", fr: "février", en: "February" },
+    march: { it: "marzo", fr: "mars", en: "March" },
+    april: { it: "aprile", fr: "avril", en: "April" },
+    may: { it: "maggio", fr: "mai", en: "May" },
+    june: { it: "giugno", fr: "juin", en: "June" },
+    july: { it: "luglio", fr: "juillet", en: "July" },
+    august: { it: "agosto", fr: "août", en: "August" },
+    september: { it: "settembre", fr: "septembre", en: "September" },
+    october: { it: "ottobre", fr: "octobre", en: "October" },
+    november: { it: "novembre", fr: "novembre", en: "November" },
+    december: { it: "dicembre", fr: "décembre", en: "December" }
+  };
+
+  let out = text;
+
+  for (const [enMonth, values] of Object.entries(months)) {
+    const regex = new RegExp(enMonth, "gi");
+    out = out.replace(regex, values[lang] || values.en);
+  }
+
+  out = out.replace(/\b(\d{1,2})(st|nd|rd|th)\b/gi, "$1");
+
+  return out;
+}
+
 function translateStatus(status, lang) {
   const s = (status || "").trim();
 
@@ -274,18 +304,25 @@ function translateStatus(status, lang) {
 
   for (const item of translations) {
     if (item.match.test(s)) {
-      if (item.match.source === "Estimated arrival date is") {
-        return s.replace(/Estimated arrival date is/i, item[lang] || item.it);
+      if (/Estimated arrival date is/i.test(s)) {
+        return replaceMonthNames(
+          s.replace(/Estimated arrival date is/i, item[lang] || item.it),
+          lang
+        );
       }
-      if (item.match.source === "Estimated departure is") {
-        return s.replace(/Estimated departure is/i, item[lang] || item.it);
+
+      if (/Estimated departure is/i.test(s)) {
+        return replaceMonthNames(
+          s.replace(/Estimated departure is/i, item[lang] || item.it),
+          lang
+        );
       }
-      return item[lang] || item.it;
+
+      return replaceMonthNames(item[lang] || item.it, lang);
     }
   }
 
-  return s;
-}
+  return replaceMonthNames(s, lang);
 }
 
 function translate(key, lang) {
