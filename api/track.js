@@ -1,4 +1,5 @@
 export default async function handler(req, res) {
+  // CORS
   res.setHeader("Access-Control-Allow-Origin", "*");
   res.setHeader("Access-Control-Allow-Methods", "GET,OPTIONS");
   res.setHeader("Access-Control-Allow-Headers", "Content-Type");
@@ -91,17 +92,13 @@ function parseTrackingHtml(html, requestedTracking, lang) {
       events.push({
         date,
         location: translateLocation(location),
-        status: translateStatus(statusRaw, lang),
-        status_raw: statusRaw
+        status: translateStatus(statusRaw, lang)
       });
     }
   }
 
   const translatedLatest = translateStatus(latestStatus, lang);
-  const statusCode = inferStatusCode(latestStatus, events);
-  const shippedDate = findShippedDate(events);
-  const daysSinceShipped = calculateDaysSince(shippedDate);
-  const progressStep = inferProgressStep(statusCode, events);
+  const statusCode = inferStatusCode(latestStatus);
 
   return {
     tracking_number: summaryTracking || requestedTracking,
@@ -111,106 +108,41 @@ function parseTrackingHtml(html, requestedTracking, lang) {
       location: events[0]?.location || translateLocation(country) || translate("unknown", lang),
       country: country || translate("unknown", lang),
       last_update: lastUpdate || translate("unknown", lang),
-      consignee: consignee || translate("unknown", lang),
-      shipped_date: shippedDate || null,
-      days_since_shipped: daysSinceShipped,
-      progress_step: progressStep
+      consignee: consignee || translate("unknown", lang)
     },
     events
   };
 }
 
-function inferStatusCode(status, events = []) {
-  const source = [status, ...events.map(e => e.status_raw || e.status)].join(" ").toLowerCase();
+function inferStatusCode(status) {
+  const s = (status || "").toLowerCase();
 
-  if (
-    source.includes("delivered") ||
-    source.includes("signed") ||
-    source.includes("consegnato")
-  ) {
+  if (s.includes("delivered") || s.includes("signed") || s.includes("consegnato")) {
     return "delivered";
   }
 
   if (
-    source.includes("airline") ||
-    source.includes("airport") ||
-    source.includes("flight") ||
-    source.includes("transit") ||
-    source.includes("转运") ||
-    source.includes("离开") ||
-    source.includes("到达") ||
-    source.includes("customs") ||
-    source.includes("clearance")
+    s.includes("airline") ||
+    s.includes("airport") ||
+    s.includes("transit") ||
+    s.includes("转运") ||
+    s.includes("离开") ||
+    s.includes("到达") ||
+    s.includes("customs") ||
+    s.includes("clearance")
   ) {
     return "in_transit";
   }
 
   if (
-    source.includes("package has been packed") ||
-    source.includes("handed over") ||
-    source.includes("left the operations center") ||
-    source.includes("离开操作中心")
-  ) {
-    return "shipped";
-  }
-
-  if (
-    source.includes("order information received") ||
-    source.includes("received") ||
-    source.includes("电子信息")
+    s.includes("order information received") ||
+    s.includes("received") ||
+    s.includes("电子信息")
   ) {
     return "pending";
   }
 
   return "exception";
-}
-
-function inferProgressStep(statusCode, events = []) {
-  if (statusCode === "delivered") return 4;
-  if (statusCode === "in_transit") return 3;
-  if (statusCode === "shipped") return 2;
-  if (statusCode === "pending") return 1;
-
-  const source = events.map(e => (e.status_raw || e.status || "")).join(" ").toLowerCase();
-
-  if (source.includes("airline") || source.includes("airport") || source.includes("flight")) return 3;
-  if (source.includes("packed") || source.includes("handed over") || source.includes("离开操作中心")) return 2;
-  return 1;
-}
-
-function findShippedDate(events = []) {
-  if (!events.length) return null;
-
-  const shippingKeywords = [
-    /package has been packed/i,
-    /cargo handed over/i,
-    /handed over to airline/i,
-    /left the operations center/i,
-    /离开操作中心/,
-    /delivered to airport/i
-  ];
-
-  const oldestFirst = [...events].reverse();
-
-  for (const event of oldestFirst) {
-    const raw = (event.status_raw || event.status || "").trim();
-    if (shippingKeywords.some(rx => rx.test(raw))) {
-      return event.date || null;
-    }
-  }
-
-  return oldestFirst[0]?.date || null;
-}
-
-function calculateDaysSince(dateString) {
-  if (!dateString) return null;
-  const dt = new Date(dateString.replace(" ", "T"));
-  if (Number.isNaN(dt.getTime())) return null;
-
-  const now = new Date();
-  const diffMs = now.getTime() - dt.getTime();
-  const days = Math.floor(diffMs / (1000 * 60 * 60 * 24));
-  return days < 0 ? 0 : days;
 }
 
 function translateLocation(location) {
@@ -237,12 +169,6 @@ function translateStatus(status, lang) {
       en: "Domestic customs clearance completed"
     },
     {
-      match: /Domestic customs clearance in progress/i,
-      it: "Sdoganamento nazionale in corso",
-      fr: "Dédouanement national en cours",
-      en: "Domestic customs clearance in progress"
-    },
-    {
       match: /Package has been packed and delivered to airport/i,
       it: "Il pacco è stato preparato e consegnato all’aeroporto",
       fr: "Le colis a été préparé et remis à l’aéroport",
@@ -253,36 +179,6 @@ function translateStatus(status, lang) {
       it: "Informazioni ordine ricevute. Stiamo aspettando il pacco.",
       fr: "Informations de commande reçues. Nous attendons l’arrivée du colis.",
       en: "Order information received. We're expecting your parcel to arrive with us."
-    },
-    {
-      match: /Awaiting flight assignment/i,
-      it: "In attesa dell’assegnazione del volo",
-      fr: "En attente d’attribution du vol",
-      en: "Awaiting flight assignment"
-    },
-    {
-      match: /Flight ETD/i,
-      it: "Partenza stimata del volo",
-      fr: "Départ estimé du vol",
-      en: "Flight estimated departure"
-    },
-    {
-      match: /The flight has departed/i,
-      it: "Il volo è partito",
-      fr: "Le vol a décollé",
-      en: "The flight has departed"
-    },
-    {
-      match: /Flight ETA/i,
-      it: "Arrivo stimato del volo",
-      fr: "Arrivée estimée du vol",
-      en: "Flight estimated arrival"
-    },
-    {
-      match: /Arrival to the destination airport/i,
-      it: "Arrivato all’aeroporto di destinazione",
-      fr: "Arrivé à l’aéroport de destination",
-      en: "Arrival to the destination airport"
     },
     {
       match: /货物离开操作中心/,
