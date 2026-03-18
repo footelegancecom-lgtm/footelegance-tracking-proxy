@@ -1,4 +1,13 @@
 export default async function handler(req, res) {
+  // CORS
+  res.setHeader("Access-Control-Allow-Origin", "*");
+  res.setHeader("Access-Control-Allow-Methods", "GET,OPTIONS");
+  res.setHeader("Access-Control-Allow-Headers", "Content-Type");
+
+  if (req.method === "OPTIONS") {
+    return res.status(200).end();
+  }
+
   try {
     const num = (req.query.num || "").trim();
     const lang = (req.query.lang || "it").toLowerCase();
@@ -22,7 +31,6 @@ export default async function handler(req, res) {
     });
 
     const html = await response.text();
-
     const parsed = parseTrackingHtml(html, num, lang);
 
     return res.status(200).json({
@@ -46,16 +54,6 @@ function parseTrackingHtml(html, requestedTracking, lang) {
       .replace(/\s+/g, " ")
       .trim();
 
-  const matchOne = (regex) => {
-    const m = html.match(regex);
-    return m ? clean(m[1]) : "";
-  };
-
-  // Bloc résumé principal
-  const referenceNo = matchOne(/<li class="div_li3" title="([^"]*)">[^<]*<\/li>/);
-  const trackingNumber = matchOne(/<li class="div_li3" title="([^"]*)">[^<]*<\/li>/g)?.[1];
-
-  // On prend les lignes de résumé dans l’ordre attendu
   const summaryRowMatch = html.match(
     /<ul class="clearfix">\s*<li class="div_li3" title="[^"]*">([^<]*)<\/li>[\s\S]*?<li class="div_li3" title="[^"]*">([^<]*)<\/li>[\s\S]*?<li class="div_li1">([^<]*)<\/li>[\s\S]*?<li class="div_li2">([^<]*)<\/li>[\s\S]*?<li class="div_li4">([\s\S]*?)<\/li>[\s\S]*?<li class="div_li3"><span title="([^"]*)">/i
   );
@@ -74,7 +72,6 @@ function parseTrackingHtml(html, requestedTracking, lang) {
     consignee = clean(summaryRowMatch[6]);
   }
 
-  // Tableau des événements
   const eventRegex =
     /<tr>\s*<td[^>]*>\s*([^<]*)<\/td>\s*<td[^>]*>\s*([^<]*)<\/td>\s*<td[^>]*>\s*([\s\S]*?)<\/td>\s*<\/tr>/gi;
 
@@ -120,11 +117,7 @@ function parseTrackingHtml(html, requestedTracking, lang) {
 function inferStatusCode(status) {
   const s = (status || "").toLowerCase();
 
-  if (
-    s.includes("delivered") ||
-    s.includes("signed") ||
-    s.includes("consegnato")
-  ) {
+  if (s.includes("delivered") || s.includes("signed") || s.includes("consegnato")) {
     return "delivered";
   }
 
@@ -177,7 +170,7 @@ function translateStatus(status, lang) {
     },
     {
       match: /Package has been packed and delivered to airport/i,
-      it: "Il pacco è stato préparato e consegnato all’aeroporto",
+      it: "Il pacco è stato preparato e consegnato all’aeroporto",
       fr: "Le colis a été préparé et remis à l’aéroport",
       en: "Package has been packed and delivered to airport"
     },
